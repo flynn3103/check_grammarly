@@ -158,3 +158,54 @@ class Trainer(object):
 
     def num_parameters(self,parameters):
         return  sum(p.numel() for p in parameters)
+
+if __name__ == "main":
+    init_logger()
+    tokenizer_path = '/content/drive/MyDrive/nlp projects/Text_correction/spm_tokenizer.model'
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    tokenizer = spm.SentencePieceProcessor(tokenizer_path)
+    data_dir = '/content/drive/MyDrive/nlp projects/Text_correction/all_data/train_data/train1'
+    args = EasyDict({'data_dir': data_dir, 'ignore_index': 0, 'max_seq_len': 100, })
+    train1 = load_and_cache_examples(args = args, tokenizer = tokenizer, mode = 'train' )
+
+    data_dir = '/content/drive/MyDrive/nlp projects/Text_correction/all_data/train_data/train2'
+    args = EasyDict({'data_dir': data_dir, 'ignore_index': 0, 'max_seq_len': 100, })
+    train2 = load_and_cache_examples(args = args, tokenizer = tokenizer, mode = 'train' )
+    train_data = torch.utils.data.ConcatDataset([train1, train2])
+
+    data_dir = '/content/drive/MyDrive/nlp projects/Text_correction/all_data/dev_data'
+    args = EasyDict({'data_dir': data_dir, 'ignore_index': 0, 'max_seq_len': 100, })
+    dev_data = load_and_cache_examples(args = args, tokenizer= tokenizer, mode = 'dev' )
+
+    train_sampler = RandomSampler(train_data)
+    dev_sampler = SequentialSampler(dev_data)
+    # test_sampler = SequentialSampler(test_dataset)
+
+
+    train_dataloader = DataLoader(dataset = train_data, batch_size = 128, sampler = train_sampler,)
+    dev_dataloader = DataLoader(dataset = dev_data, batch_size = 128, sampler = dev_sampler)
+    # test_dataloader = DataLoader(dataset = test_dataset, batch_size = 32, sampler = test_sampler )
+    detector = Detector(input_dim = 10000,output_dim = 1,  embedding_dim = 512, num_layers = 2, hidden_size = 768)
+    model = torch.load('/content/drive/MyDrive/nlp projects/Text_correction/all_data/train_data/Detector.pkl')
+    model_dir = '/content/drive/MyDrive/nlp projects/Text_correction/all_data'
+    training_args = EasyDict({'model_dir': model_dir, 
+                          'learning_rate': 0.0005, 
+                          'epochs': 2,          # loop over this number of epochs until reach num_steps 
+                          'num_steps':200000, # total number of training steps
+                          'logging_steps': 2000, # do eval each time reach this number of steps
+                          'save_steps': 2000,  #save model each time reach this training steps
+                          'device': device,
+                
+                            'warmup_steps': 0,
+                          'gradient_accumulation_steps': 1, # update parameters after this number of gradient accumulation steps
+                          'max_seq_len': 100, 
+                          'vocab_size': 10000
+                          })
+    trainer = Trainer(args = training_args, model = model, 
+                  train_dataloader = train_dataloader,val_dataloader = dev_dataloader )
+    
+    f1_eval=trainer.train()
+    print(f1_eval)
+
+
+

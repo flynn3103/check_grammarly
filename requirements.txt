@@ -1,0 +1,7 @@
+scrapy
+crochet 
+sentencepiece
+unidecode
+transformers
+seqeval
+sentencepiece
