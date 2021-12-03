@@ -1,7 +1,2 @@
-scrapy
-crochet 
-sentencepiece
-unidecode
-transformers
-seqeval
-sentencepiece
+selenium
+beautifulsoup4

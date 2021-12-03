@@ -1,29 +1,3 @@
-import sentencepiece as spm
-from seqeval.metrics import precision_score as seq_precision, recall_score as seq_recall, f1_score as seq_f1
-from transformers import AutoTokenizer, XLMRobertaModel, XLMRobertaForMaskedLM
-import json
-import logging
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import copy
-import os
-import torch
-import numpy as np
-import torch.nn as nn 
-from torch.nn import functional as F
-from tqdm.notebook import tqdm
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
-from transformers import AdamW, get_linear_schedule_with_warmup
-from tqdm.notebook import tqdm
-from easydict import EasyDict
-import gc
-from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
-from torch.optim import Adam
-import pickle
-
-logger = logging.getLogger(__name__)
-
 class InputExample(object):
     r"""
     One single example
@@ -122,7 +96,3 @@ class JointProcessor(object):
         return self._create_examples(texts = self._read_file(os.path.join(data_path, self.raw_text_file)),
                                     onehot_labels = self._read_file(os.path.join(data_path, self.onehot_labels_file)),
                                     text_labels = self._read_file(os.path.join(data_path, self.text_label_file)), set_type = mode)
-        
-        
-
-

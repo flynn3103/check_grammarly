@@ -1,29 +1,3 @@
-import numpy as np
-import logging
-
-def init_logger():
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                        datefmt='%m/%d/%Y %H:%M:%S',
-                        level=logging.INFO)
-
-def _read_file(input_file, min_seq_len, max_seq_len):
-  with open(input_file, 'r', encoding= 'utf-8') as f:
-    raw_text= f.read()
-
-  lines = []
-  raw_text = raw_text.split()
-  raw_text_len = len(raw_text)
-  while True:
-    line_len = np.random.randint(min_seq_len, max_seq_len)
-    if raw_text_len < line_len :
-      break
-    line = ' '.join(raw_text[:line_len])
-    raw_text = raw_text[line_len:]
-    lines.append(line)
-    raw_text_len -= line_len
-    
-  return lines
-
 def write_data(data_path, data):
     tree = TreebankWordDetokenizer()
     with open(os.path.join(data_path, 'rawtext.txt'), 'w', encoding = 'utf-8') as f:
@@ -36,9 +10,29 @@ def write_data(data_path, data):
         for line in tqdm(data, desc = 'Writing text_label file...'):
             f.write(tree.detokenize(line[2]) + '\n')
 
-def num_parameters(parameters):
-    num = 0
-    for i in parameters:
-        num += len(i)
-    return num
+def get_data(data_path, num_train, num_dev):
+    raw_text = []
+    onehot_label = []
+    text_label = []
+    with open(os.path.join(data_path, 'rawtext.txt'), 'r', encoding = 'utf-8') as f:
+        for line in f:
+            raw_text.append(line.rstrip())
+    with open(os.path.join(data_path, 'onehot_label.txt'), 'r') as f:
+        for line in f:
+            onehot_label.append([int(x) for x in  line.rstrip().split()])
 
+    with open(os.path.join(data_path, 'text_label.txt'), 'r', encoding = 'utf-8') as f:
+        for line in f:
+            text_label.append(line.rstrip())
+
+    assert len(raw_text) == len(onehot_label) == len(text_label), 'Error: len data does not match'
+    total = num_train + num_dev
+    indices = np.random.randint(0, len(onehot_label), total)
+    train_data  = []
+    dev_data = []
+    for idx in indices[:num_train]:
+        train_data.append((raw_text[idx], onehot_label[idx], text_label[idx]))
+    for idx in indices[num_train:]:
+        dev_data.append((raw_text[idx], onehot_label[idx], text_label[idx]))
+    
+    return train_data, dev_data
