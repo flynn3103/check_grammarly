@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 pytorch-lightning==1.2.10
 datasets==1.6.2
 transformers==4.5.1
@@ -9,3 +10,19 @@ seaborn
 hydra-core
 omegaconf
 hydra_colorlog
+dvc
+=======
+pytorch-lightning==1.2.10
+datasets==1.6.2
+transformers==4.5.1
+scikit-learn==0.24.2
+wandb
+torchmetrics
+matplotlib
+seaborn
+hydra-core
+omegaconf
+hydra_colorlog
+onnxruntime
+dvc
+>>>>>>> 5abccbf07aac948023c83e2c0d8830a85a4f8adc
