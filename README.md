@@ -32,7 +32,7 @@ Once the training is completed in the end of the logs you will see something lik
 ```
 wandb: Synced 5 W&B file(s), 4 media file(s), 3 artifact file(s) and 0 other file(s)
 wandb:
-wandb: Synced proud-mountain-77: https://wandb.ai/raviraja/MLOps%20Basics/runs/3vp1twdc
+wandb: Synced proud-mountain-77: https://wandb.ai/flynn3103/MLOps%20on%20AWS?workspace=user-flynn3103
 ```
 
 Follow the link to see the wandb dashboard which contains all the plots.
