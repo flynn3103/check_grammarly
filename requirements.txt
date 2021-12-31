@@ -10,4 +10,8 @@ hydra-core
 omegaconf
 hydra_colorlog
 onnxruntime
-dvc
+dvc[drive]
+fastapi
+uvicorn
+nest-asyncio
+pyngrok
