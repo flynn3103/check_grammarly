@@ -1,58 +1,112 @@
-class Detector(nn.Module):
-    def __init__(self, input_dim,output_dim,  embedding_dim, num_layers, hidden_size):
-
-        super(Detector, self).__init__()
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.embedding_dim  = embedding_dim
-        self.num_layers = num_layers
-        self.hidden_size = hidden_size
-        self.embedding = nn.Embedding(num_embeddings = self.input_dim, embedding_dim = self.embedding_dim, )
-        self.LSTM = nn.LSTM(input_size = self.embedding_dim, hidden_size= self.hidden_size, num_layers = self.num_layers, 
-                            batch_first = True, dropout = 0.1, bidirectional = True)
-        self.linear = nn.Linear(self.hidden_size*2, self.output_dim)
-        self.sigmoid = nn.Sigmoid()
-    def forward(self, x):
-        emb = self.embedding(x)
-        outputs, (h_n, h_c) = self.LSTM(emb)
-        logits = self.linear(outputs)
-        p = self.sigmoid(logits)
-        return p
-
-class HardMasked(nn.Module):
-    def __init__(self, detector, MaskedLM, detector_tokenizer, maskedlm_tokenzier,device ):
-        super(HardMasked, self).__init__()
-
-        self.detector = detector.to(device)
-        self.MaskedLM = MaskedLM.to(device)
-        self.detector_tokenizer = detector_tokenizer
-        self.maskedlm_tokenizer = maskedlm_tokenizer
-        self.use_device = device
+import torch
+import wandb
+import hydra
+import numpy as np
+import pandas as pd
+import torchmetrics
+import pytorch_lightning as pl
+from transformers import AutoModelForSequenceClassification
+from omegaconf import OmegaConf, DictConfig
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
-    def forward(self, s):
-        maskedlm_features = self.prepare_input(s)
-        outputs = MaskedLM(input_ids = torch.tensor([maskedlm_features['input_ids']], dtype = torch.long, device = self.use_device), 
-                            attention_mask = torch.tensor([maskedlm_features['attention_mask']], dtype = torch.long, device = self.use_device) )
-        logits = outputs['logits'][0]
-        output_ids = torch.argmax(logits, dim = -1)
-        final_output = maskedlm_tokenizer.decode(output_ids)
-        return final_output
-        
-    def prepare_input(self, s):
+class ColaModel(pl.LightningModule):
+    def __init__(self, model_name="google/bert_uncased_L-2_H-128_A-2", lr=3e-5):
+        super(ColaModel, self).__init__()
+        self.save_hyperparameters()
 
-        detector_input_ids = self.detector_tokenizer.encode(s, out_type = int)
-        detector_input_pieces = self.detector_tokenizer.id_to_piece(detector_input_ids)
-        detector_outputs = (self.detector(torch.tensor([detector_input_ids], dtype = torch.long, device = self.use_device))[0].reshape(1,-1) > 0.5).int()[0] 
+        self.bert = AutoModelForSequenceClassification.from_pretrained(
+            model_name, num_labels=2
+        )
+        self.num_classes = 2
+        self.train_accuracy_metric = torchmetrics.Accuracy()
+        self.val_accuracy_metric = torchmetrics.Accuracy()
+        self.f1_metric = torchmetrics.F1(num_classes=self.num_classes)
+        self.precision_macro_metric = torchmetrics.Precision(
+            average="macro", num_classes=self.num_classes
+        )
+        self.recall_macro_metric = torchmetrics.Recall(
+            average="macro", num_classes=self.num_classes
+        )
+        self.precision_micro_metric = torchmetrics.Precision(average="micro")
+        self.recall_micro_metric = torchmetrics.Recall(average="micro")
 
-        for i in range(1, len(detector_input_pieces)):
-            if detector_outputs[i] == 1:
-                detector_input_pieces[i] = ' <mask>'
+    def forward(self, input_ids, attention_mask, labels=None):
+        outputs = self.bert(
+            input_ids=input_ids, attention_mask=attention_mask, labels=labels
+        )
+        return outputs
 
-        masked_s = self.detector_tokenizer.decode(detector_input_pieces)
-        for i in range(5):
-            masked_s = re.sub(r'<mask>\s<mask>', '<mask>', masked_s)
+    def training_step(self, batch, batch_idx):
+        outputs = self.forward(
+            batch["input_ids"], batch["attention_mask"], labels=batch["label"]
+        )
+        # loss = F.cross_entropy(logits, batch["label"])
+        preds = torch.argmax(outputs.logits, 1)
+        train_acc = self.train_accuracy_metric(preds, batch["label"])
+        self.log("train/loss", outputs.loss, prog_bar=True, on_epoch=True)
+        self.log("train/acc", train_acc, prog_bar=True, on_epoch=True)
+        return outputs.loss
 
-        maskedlm_features = maskedlm_tokenizer(masked_s)
+    def validation_step(self, batch, batch_idx):
+        labels = batch["label"]
+        outputs = self.forward(
+            batch["input_ids"], batch["attention_mask"], labels=batch["label"]
+        )
+        preds = torch.argmax(outputs.logits, 1)
 
-        return maskedlm_features
+        # Metrics
+        valid_acc = self.val_accuracy_metric(preds, labels)
+        precision_macro = self.precision_macro_metric(preds, labels)
+        recall_macro = self.recall_macro_metric(preds, labels)
+        precision_micro = self.precision_micro_metric(preds, labels)
+        recall_micro = self.recall_micro_metric(preds, labels)
+        f1 = self.f1_metric(preds, labels)
+
+        # Logging metrics
+        self.log("valid/loss", outputs.loss, prog_bar=True, on_step=True)
+        self.log("valid/acc", valid_acc, prog_bar=True, on_epoch=True)
+        self.log("valid/precision_macro", precision_macro, prog_bar=True, on_epoch=True)
+        self.log("valid/recall_macro", recall_macro, prog_bar=True, on_epoch=True)
+        self.log("valid/precision_micro", precision_micro, prog_bar=True, on_epoch=True)
+        self.log("valid/recall_micro", recall_micro, prog_bar=True, on_epoch=True)
+        self.log("valid/f1", f1, prog_bar=True, on_epoch=True)
+        return {"labels": labels, "logits": outputs.logits}
+
+    def validation_epoch_end(self, outputs):
+        labels = torch.cat([x["labels"] for x in outputs])
+        logits = torch.cat([x["logits"] for x in outputs])
+        preds = torch.argmax(logits, 1)
+
+        ## There are multiple ways to track the metrics
+        # 1. Confusion matrix plotting using inbuilt W&B method
+        self.logger.experiment.log(
+            {
+                "conf": wandb.plot.confusion_matrix(
+                    probs=logits.numpy(), y_true=labels.numpy()
+                )
+            }
+        )
+
+        # 2. Confusion Matrix plotting using scikit-learn method
+        wandb.log({"cm": wandb.sklearn.plot_confusion_matrix(labels.numpy(), preds)})
+
+        # 3. Confusion Matric plotting using Seaborn
+        # data = confusion_matrix(labels.numpy(), preds.numpy())
+        # df_cm = pd.DataFrame(data, columns=np.unique(labels), index=np.unique(labels))
+        # df_cm.index.name = "Actual"
+        # df_cm.columns.name = "Predicted"
+        # plt.figure(figsize=(7, 4))
+        # plot = sns.heatmap(
+        #     df_cm, cmap="Blues", annot=True, annot_kws={"size": 16}
+        # )  # font size
+        # self.logger.experiment.log({"Confusion Matrix": wandb.Image(plot)})
+
+        # self.logger.experiment.log(
+        #     {"roc": wandb.plot.roc_curve(labels.numpy(), logits.numpy())}
+        # )
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.hparams["lr"])
