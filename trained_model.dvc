@@ -1,0 +1,5 @@
+wdir: models
+outs:
+- md5: 70bcd6cd6d3ac8c4f3c2bacd4e7963a2
+  size: 52678597
+  path: best-checkpoint.ckpt

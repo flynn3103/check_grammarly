@@ -1,0 +1,23 @@
+{
+    "os": "Linux-5.4.144+-x86_64-with-Ubuntu-18.04-bionic",
+    "python": "3.7.12",
+    "heartbeatAt": "2021-12-31T05:52:51.726392",
+    "startedAt": "2021-12-31T05:52:47.930868",
+    "docker": null,
+    "gpu": "Tesla K80",
+    "gpu_count": 1,
+    "cpu_count": 2,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "train.py",
+    "git": {
+        "remote": "https://flynn3103:@github.com/flynn3103/check_grammarly.git",
+        "commit": "2366f85ab89cfafa7987bd8caba0ef6641ae613f"
+    },
+    "email": null,
+    "root": "/content/check_grammarly",
+    "host": "ee15d3dcafa4",
+    "username": "root",
+    "executable": "/usr/bin/python3"
+}
