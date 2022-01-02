@@ -1,3 +1,6 @@
+# Machine Learning Pipeline on AWS
+<img src="./images/diagram.png">
+
 ## Requirements:
 
 This project uses Python 3.8
@@ -37,10 +40,6 @@ wandb: Synced proud-mountain-77: https://wandb.ai/flynn3103/MLOps%20on%20AWS?wor
 
 Follow the link to see the wandb dashboard which contains all the plots.
 
-### Versioning data
-
-Refer to the blog: [DVC Configuration](https://www.ravirajag.dev/blog/mlops-dvc)
-
 ### Exporting model to ONNX
 
 Once the model is trained, convert the model using the following command:
@@ -63,10 +62,6 @@ python inference.py
 python inference_onnx.py
 ```
 
-## S3 & ECR
-
-Follow the instructions mentioned in the [blog post](https://www.ravirajag.dev/blog/mlops-container-registry) for creating S3 bucket and ECR repository. 
-
 ### Configuring dvc
 
 ```
@@ -75,8 +70,6 @@ dvc remote add -d model-store s3://models-dvc/trained_models/
 ```
 
 ### AWS credentials
-
-Create the credentials as mentioned in the [blog post](https://www.ravirajag.dev/blog/mlops-container-registry)
 
 **Do not share the secrets with others**
 
@@ -104,8 +97,6 @@ dvc push trained_model.dvc
 
 ### Docker
 
-Install the docker using the [instructions here](https://docs.docker.com/engine/install/)
-
 Build the image using the command
 
 ```shell
@@ -129,9 +120,6 @@ docker-compose up
 ```
 
 ### Pushing the image to ECR
-
-Follow the instructions mentioned in [blog post](https://www.ravirajag.dev/blog/mlops-container-registry) for creating ECR repository.
-
 - Authenticating docker client to ECR
 
 ```
@@ -148,29 +136,4 @@ docker tag mlops-basics:latest 246113150184.dkr.ecr.us-west-2.amazonaws.com/mlop
 
 ```
 docker push 246113150184.dkr.ecr.us-west-2.amazonaws.com/mlops-basics:latest
-```
-
-Refer to `.github/workflows/build_docker_image.yaml` file for automatically creating the docker image with trained model and pushing it to ECR.
-
-### Serveless - Lambda
-
-Refer to the [Blog Post here](https://www.ravirajag.dev/blog/mlops-serverless) for detailed instructions on configuring lambda with the docker image and invoking it using a API.
-
-### Monitoring - Kibana
-
-Refer to the [Blog Post here](https://www.ravirajag.dev/blog/mlops-monitoring) for detailed instructions on configuring kibana using elasticsarch cluster and integrating with cloudwatch logs.
-
-
-### Running notebooks
-
-I am using [Jupyter lab](https://jupyter.org/install) to run the notebooks.
-
-Since I am using a virtualenv, when I run the command `jupyter lab` it might or might not use the virtualenv.
-
-To make sure to use the virutalenv, run the following commands before running `jupyter lab`
-
-```
-conda install ipykernel
-python -m ipykernel install --user --name project-setup
-pip install ipywidgets
 ```
